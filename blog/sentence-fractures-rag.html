@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Why Your RAG Pipeline is Missing Context: Debugging Sentence Fractures — Ali Afzal Yousuf</title>
+<meta name="description" content="Why character-based chunking breaks dense retrieval through sentence fractures and how to optimize chunk overlap and evaluate retrieval quality." />
+<meta name="author" content="Ali Afzal Yousuf" />
+<link rel="canonical" href="https://3liaf.github.io/blog/sentence-fractures-rag.html" />
+
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Why Your RAG Pipeline is Missing Context: Debugging Sentence Fractures" />
+<meta property="og:description" content="Why character-based chunking breaks dense retrieval through sentence fractures and how to fix it." />
+<meta property="og:url" content="https://3liaf.github.io/blog/sentence-fractures-rag.html" />
+
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#11141b; --line:#1e232e;
+    --text:#e6e9ef; --muted:#8b93a7; --accent:#6c63ff;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#ffffff; --panel:#f7f8fa; --line:#e5e7eb; --text:#111318; --muted:#5b6273; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:16px/1.7 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:60px 24px 96px}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .back{font-size:14px; margin-bottom:24px; display:inline-block}
+  h1{font-size:30px; line-height:1.25; margin:0 0 12px; letter-spacing:-.02em}
+  .meta{color:var(--muted); font-size:14px; margin-bottom:36px}
+  h2{font-size:20px; margin:40px 0 14px; letter-spacing:-.01em}
+  h3{font-size:16px; margin:24px 0 8px}
+  p{margin:0 0 16px}
+  pre{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; overflow-x:auto; font-size:14px; line-height:1.5}
+  code{font-family:ui-monospace,Menlo,Monaco,Consolas,monospace; font-size:14px}
+  p code{background:var(--panel); border:1px solid var(--line); padding:2px 6px; border-radius:4px}
+  ul, ol{margin:0 0 20px; padding-left:22px}
+  li{margin-bottom:8px}
+  .callout{background:var(--panel); border-left:4px solid var(--accent); border-radius:0 10px 10px 0; padding:16px 20px; margin:24px 0}
+  footer{margin-top:64px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/blog/">&larr; Back to Articles</a>
+  <h1>Why Your RAG Pipeline is Missing Context: Debugging Sentence Fractures</h1>
+  <div class="meta">By Ali Afzal Yousuf &middot; November 2026 &middot; 5 min read</div>
+
+  <p>Most engineering teams building Retrieval-Augmented Generation (RAG) treat document chunking as an afterthought. They configure an arbitrary chunk size (e.g. 500 characters), add a 10% overlap, push the embeddings to Pinecone or Qdrant, and wonder why retrieval degrades on real-world queries.</p>
+
+  <p>When dense vector search fails to pull the correct context, the culprit is rarely the embedding model. In production, the most frequent failure mode is <strong>sentence fracturing</strong>.</p>
+
+  <h2>1. What is a Sentence Fracture?</h2>
+  <p>Dense vector embeddings encode syntactic and semantic dependencies between clauses in high-dimensional space. When an arbitrary splitter cleaves a paragraph mid-sentence based on a hard character or token limit, two critical failures occur:</p>
+  <ul>
+    <li><strong>Context Severance</strong>: The first half of the sentence loses its subject or qualification; the second half loses its predicate.</li>
+    <li><strong>Semantic Dilution</strong>: The embedding vector for the fractured fragment represents grammatical noise, resulting in poor cosine similarity scores during top-k retrieval.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Example Fracture:</strong><br>
+    <em>Original:</em> "Because of the strict compliance regulations enacted in Q3, all financial audit logs must be retained for 7 years."<br><br>
+    <em>Chunk A:</em> "...because of the strict compliance regulations enacted in Q3," (No retention rule!)<br>
+    <em>Chunk B:</em> "all financial audit logs must be retained for 7 years." (No context as to why or when!)
+  </div>
+
+  <h2>2. The Overlap Dilemma</h2>
+  <p>To mask fractures, developers routinely ramp up <code>chunk_overlap</code> to 25% or 30%. But excessive overlap introduces severe downstream costs:</p>
+  <ul>
+    <li><strong>Context Window Waste</strong>: Duplicating tokens across chunks fills the LLM context window with redundant text rather than diverse evidence.</li>
+    <li><strong>Index Cost Multipliers</strong>: You pay embedding providers to embed the exact same tokens two or three times.</li>
+  </ul>
+
+  <h2>3. Visualizing Chunking in Real Time</h2>
+  <p>To eliminate manual guesswork, I built an interactive visualizer that runs 100% client-side in the browser:</p>
+  <p>&rarr; <strong><a href="https://3liaf.github.io/rag-chunk-visualizer/" target="_blank">Launch RAG Chunk Visualizer</a></strong><br>
+     &rarr; <strong><a href="https://github.com/3liAf/rag-chunk-visualizer" target="_blank">View GitHub Repository</a></strong></p>
+
+  <p>The visualizer maps your text segments in color-coded blocks, immediately flags sentences cleaved mid-clause, and calculates the exact token duplication overhead. Once tuned, it generates drop-in LangChain or LlamaIndex Python code.</p>
+
+  <h2>4. Measuring Retrieval Accuracy with rag-eval-metrics</h2>
+  <p>To verify whether chunk tuning improves results, evaluate your retriever with zero-dependency Information Retrieval metrics:</p>
+
+  <pre><code>pip install git+https://github.com/3liAf/rag-eval-metrics.git</code></pre>
+
+  <pre><code>from rageval import hit_rate_at_k, mean_reciprocal_rank, ndcg_at_k
+
+retrieved = ["chunk_84", "chunk_12", "chunk_99"]
+ground_truth = {"chunk_12"}
+
+print("Hit Rate @ 3:", hit_rate_at_k(retrieved, ground_truth, k=3))
+print("MRR:         ", mean_reciprocal_rank([[retrieved, ground_truth]]))
+print("NDCG @ 3:    ", ndcg_at_k(retrieved, ground_truth, k=3))</code></pre>
+
+  <h2>Summary</h2>
+  <ol>
+    <li>Never split purely on raw character counts. Use recursive, sentence-aware boundary splitters.</li>
+    <li>Audit document boundaries with the <a href="https://3liaf.github.io/rag-chunk-visualizer/">RAG Visualizer</a> before running large embedding batches.</li>
+    <li>Track Hit Rate @ 5 and NDCG @ 5 to ensure your chunking adjustments actually improve retrieval accuracy.</li>
+  </ol>
+
+  <footer>
+    Written by Ali Afzal Yousuf &middot; AI Systems Architect &middot; FAU Erlangen-N&uuml;rnberg &middot; AstraMeld
+  </footer>
+</div>
+</body>
+</html>

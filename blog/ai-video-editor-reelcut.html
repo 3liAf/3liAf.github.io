@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Building an Open-Source AI Video Editor: Whisper, LLMs, and FFmpeg — Ali Afzal Yousuf</title>
+<meta name="description" content="How to build a zero-subscription fast-cut video editor using Whisper, structured LLM JSON plans, and deterministic FFmpeg rendering." />
+<meta name="author" content="Ali Afzal Yousuf" />
+<link rel="canonical" href="https://3liaf.github.io/blog/ai-video-editor-reelcut.html" />
+
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Building an Open-Source AI Video Editor: Whisper, LLMs, and FFmpeg" />
+<meta property="og:description" content="How Whisper, LLMs, and FFmpeg replace $30/month closed-source video editing tools." />
+<meta property="og:url" content="https://3liaf.github.io/blog/ai-video-editor-reelcut.html" />
+
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#11141b; --line:#1e232e;
+    --text:#e6e9ef; --muted:#8b93a7; --accent:#6c63ff;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#ffffff; --panel:#f7f8fa; --line:#e5e7eb; --text:#111318; --muted:#5b6273; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:16px/1.7 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:60px 24px 96px}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .back{font-size:14px; margin-bottom:24px; display:inline-block}
+  h1{font-size:30px; line-height:1.25; margin:0 0 12px; letter-spacing:-.02em}
+  .meta{color:var(--muted); font-size:14px; margin-bottom:36px}
+  h2{font-size:20px; margin:40px 0 14px; letter-spacing:-.01em}
+  p{margin:0 0 16px}
+  pre{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; overflow-x:auto; font-size:14px; line-height:1.5}
+  code{font-family:ui-monospace,Menlo,Monaco,Consolas,monospace; font-size:14px}
+  p code{background:var(--panel); border:1px solid var(--line); padding:2px 6px; border-radius:4px}
+  ul, ol{margin:0 0 20px; padding-left:22px}
+  li{margin-bottom:8px}
+  .callout{background:var(--panel); border-left:4px solid var(--accent); border-radius:0 10px 10px 0; padding:16px 20px; margin:24px 0}
+  footer{margin-top:64px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/blog/">&larr; Back to Articles</a>
+  <h1>Building an Open-Source AI Video Editor: Whisper, LLMs, and FFmpeg</h1>
+  <div class="meta">By Ali Afzal Yousuf &middot; November 2026 &middot; 4 min read</div>
+
+  <p>Content creators and developers producing short-form video for TikTok, YouTube Shorts, and Instagram Reels frequently pay $20&ndash;$40/month for proprietary video SaaS tools. These platforms promise automated jump cuts, animated captions, and zoom transitions.</p>
+
+  <p>Under the hood, almost all of these tools wrap three open technologies: an audio transcription model (<strong>Whisper</strong>), an LLM for editorial planning, and a media processing utility (<strong>FFmpeg</strong>).</p>
+
+  <p>To eliminate the subscription tax and give creators total ownership over their video pipeline, we built and open-sourced <strong><a href="https://github.com/3liAf/reelcut">reelcut</a></strong>.</p>
+
+  <h2>The Architecture: Decoupling Planning from Rendering</h2>
+  <p>Trying to make an AI model manipulate video bytes directly is slow and prone to hallucination. Instead, <code>reelcut</code> enforces strict separation of concerns:</p>
+
+  <div class="callout">
+    <strong>The reelcut Pipeline:</strong><br>
+    1. <strong>faster-whisper</strong>: Generates word-level timestamps locally with zero API cost.<br>
+    2. <strong>LLM Director</strong>: Generates a validated <code>plan.json</code> (cuts, punchline stamps, zooms, animated captions).<br>
+    3. <strong>FFmpeg</strong>: Deterministically executes cuts, burns highlighted captions, and masters audio to &minus;14 LUFS.
+  </div>
+
+  <h2>Why plan.json is a Game Changer</h2>
+  <p>Because the AI only outputs a clean JSON schema, the process is fully transparent and editable. If a name is misspelled in a caption or a cut starts 0.5s too early, you don't need to re-run the entire model. You open <code>plan.json</code>, make the edit, and re-render in seconds.</p>
+
+  <h2>Quick Start</h2>
+  <pre><code>pip install "reelcut[all] @ git+https://github.com/3liAf/reelcut"</code></pre>
+
+  <p>Execute an automated edit using your choice of model (Claude, OpenAI, Gemini, or local Ollama):</p>
+  <pre><code># Automated full pass
+reelcut make raw_clip.mp4
+
+# Or inspect the edit plan before rendering:
+reelcut plan raw_clip.mp4
+# (tweak clip.reelcut/plan.json)
+reelcut render raw_clip.mp4</code></pre>
+
+  <h2>Open Source</h2>
+  <p>The complete codebase, test suite, and examples are available under the MIT license on GitHub:</p>
+  <p>&rarr; <strong><a href="https://github.com/3liAf/reelcut">github.com/3liAf/reelcut</a></strong></p>
+
+  <footer>
+    Written by Ali Afzal Yousuf &middot; AI Systems Architect &middot; FAU Erlangen-N&uuml;rnberg &middot; AstraMeld
+  </footer>
+</div>
+</body>
+</html>
